@@ -1,0 +1,16 @@
+{
+  "name": "application-name",
+  "version": "0.0.0",
+  "private": true,
+  "dependencies": {
+    "socket.io" : "1.1.X",
+    "body-parser": "*",
+    "colors": "*",
+    "express": "4.X",
+    "lodash": "~2.3.0",
+    "underscore" : "*",
+    "async" : "*",
+    "node-uuid" : "*",
+    "debug" : "*"
+  }
+}
