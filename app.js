@@ -25,9 +25,6 @@ io.sockets.on('connection', function (socket) {
     socket.on('message', function (data) { //any object
         console.log('Message: ', data);
         data = JSON.parse(data);
-        
-        console.log(data.apiKey + ":" + data.roomId);
-        io.to(data.apiKey + ":" + data.roomId).emit('message', data.payload);
     });
 
     socket.on('disconnect', function () {
