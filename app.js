@@ -23,8 +23,9 @@ io.sockets.on('connection', function (socket) {
     console.log('socket connected'.yellow);
 
     socket.on('message', function (data) { //any object
-        data = JSON.parse(data);
         console.log('Message: ', data);
+        data = JSON.parse(data);
+        
         console.log(data.apiKey + ":" + data.roomId);
         io.to(data.apiKey + ":" + data.roomId).emit('message', data.payload);
     });
