@@ -14,7 +14,7 @@ var uuid = require('node-uuid');
 
 var CHECK_DEAD_ROOMS_TIMEOUT = 10 * 60 * 1000;
 
-app.set('port', process.env.PORT || 3000);
+app.set('port', process.env.PORT || 3111);
 
 var apps = {};
 
@@ -38,32 +38,38 @@ io.sockets.on('connection', function (socket) {
 
     socket.on('createRoom', function(data){ //data = { roomId: '1', apiKey : '1', userName: '', roomInfo : {} }
         console.log('Room created'.green, data);
+        console.log('this user id: ' + socket.id);
         data = JSON.parse(data);
-        socket.roomId = data.roomId;
-        socket.apiKey = data.apiKey;
-        socket.userName = data.userName;
-        apps[socket.apiKey] = {};
-        apps[socket.apiKey][socket.roomId] = { participants: [ data.userName ], roomInfo : data.roomInfo, flagged : false };  
-        console.log('joining room ' + socket.apiKey + ":" + socket.roomId);    
-        //socket.join(socket.apiKey + ":" + socket.roomId);
+        apps[data.apiKey] = {};
+        apps[data.apiKey][data.roomId] = { participants: [ data.userName ], roomInfo : data.roomInfo, roomSocket: socket, flagged : false };  
+        console.log('joining room ' + data.apiKey + ":" + data.roomId);  
+        console.log('participants ' + apps[data.apiKey][data.roomId].participants);
+        // console.log(apps);
+        socket.join(data.apiKey + ":" + data.roomId);
+    });
+
+    socket.on('leaveRoom', function (data){
+        data = JSON.parse(data);
+        console.log('leaving room'.red);
+        socket.leave(data.apiKey + ":" + data.roomId);
     });
 
     socket.on('joinRoom', function (data){ //data = { roomId: '1', apiKey : '1', userName: '' }
         console.log('Joining to room: '.green, data);
+        console.log('this user id: ' + socket.id);
         data = JSON.parse(data);
-        socket.roomId = data.roomId;
-        socket.apiKey = data.apiKey;
-        socket.userName = data.userName;
-        if (apps[socket.apiKey] && apps[socket.apikey][socket.roomId]) {
-            apps[socket.apiKey][socket.roomId].participants.push(data.userName);
+        // console.log(apps);
+        // console.log("especific: ", apps[data.apiKey]);
+        if (apps[data.apiKey] && apps[data.apiKey][data.roomId]) {
+            apps[data.apiKey][data.roomId].participants.push(data.userName);
             //set flagged to false in case it was empty for some time;
-            apps[socket.apiKey][socket.roomId].flagged = false;
+            apps[data.apiKey][data.roomId].flagged = false;
             //Join this room
-            socket.join(socket.apiKey + ":" + socket.roomId);
+            socket.join(data.apiKey + ":" + data.roomId);
             //notifiy all a new client appeared
-            socket.broadcast.to(socket.apiKey + ":" + socket.roomId).emit('joined', socket.playerName );
+            socket.broadcast.to(data.apikey + ":" + data.roomId).emit('joined', data.playerName );
             //send back information to only this client of the room
-            socket.emit('roomInfo', { participants: apps[socket.apiKey][socket.roomId].participants, roomInfo : apps[socket.apiKey][socket.roomId].roomInfo});
+            socket.emit('roomInfo', { participants: apps[data.apiKey][data.roomId].participants, roomInfo : apps[data.apiKey][data.roomId].roomInfo});
         } else {
             console.log('joining an unexistant room'.red);
         }
@@ -74,16 +80,18 @@ io.sockets.on('connection', function (socket) {
         _.without(apps[socket.apiKey][socket.roomId].participants, socket.userName);
         socket.userName = data.userName;
         apps[apiKey][socket.roomId].participants.push(socket.userName);
-        ocket.emit('roomInfo', { participants: apps[socket.apiKey][socket.roomId].participants, roomInfo : apps[socket.apiKey][socket.roomId].roomInfo});
+        socket.emit('roomInfo', { participants: apps[socket.apiKey][socket.roomId].participants, roomInfo : apps[socket.apiKey][socket.roomId].roomInfo});
     });
 
     socket.on('message', function (data) { //any object
-        console.log('Message: ' + data);
-        socket.broadcast.to(socket.apiKey + ":" + socket.roomId).emit('message', data);
+        data = JSON.parse(data);
+        console.log('Message: ', data);
+        console.log(data.apiKey + ":" + data.roomId);
+        io.to(data.apiKey + ":" + data.roomId).emit('message', data.payload);
     });
 
     socket.on('disconnect', function () {
-        console.log('user disconnected'.red);
+        console.log('user disconnected: '.red, socket.id);
         // delete from participants and broadcast it.
         if (apps[socket.apiKey] && apps[socket.apiKey][socket.roomId]) {
             apps[socket.apiKey][socket.roomId].participants = _.without(apps[socket.apiKey][socket.roomId].participants, socket.userName);
